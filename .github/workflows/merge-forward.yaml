@@ -1,0 +1,43 @@
+name: ⏩ Merge Forward
+
+on:
+  push:
+    branches:
+      - "release/*"
+
+concurrency:
+  group: merge-forward-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  merge_forward:
+    name: ⏩ Merge Forward
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CI_PAT }}
+          fetch-depth: "0"
+
+      - name: 🪪 Set git name+email
+        run: |
+          git config user.name "Merge Forward"
+          git config user.email "devops+ci@joshuins.com"
+
+      - name: 🔍 Find next release branch
+        id: branches
+        run: ./.github/scripts/next-release-branch.sh
+
+      - name: 🛣 Merge
+        # next_branch is always the next release branch, or "development" once the
+        # chain runs out -- the script already resolved that, so no existence check
+        # is needed here. Promoting to main is a separate, deliberately-triggered
+        # workflow (see promote-to-main.yaml), not part of this automatic cascade.
+        run: |
+          current_branch="${{ steps.branches.outputs.current }}"
+          next_branch="${{ steps.branches.outputs.next }}"
+          echo "🪜 Merging ${current_branch} -> ${next_branch}"
+          git checkout "${next_branch}"
+          git merge "${current_branch}"
+          git push

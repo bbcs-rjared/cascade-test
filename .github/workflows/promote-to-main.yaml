@@ -1,0 +1,40 @@
+name: 🚀 Promote Release to Main
+
+# Deliberately NOT triggered on every push -- promoting to main is a release
+# event, not a side effect of a hotfix cascade. Run this by hand (or wire it to
+# your existing release/tag process) when a release branch is ready to ship.
+on:
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        description: "Release branch to promote (e.g. release/2022.11)"
+        required: true
+        type: string
+
+concurrency:
+  group: promote-to-main
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: 🚀 Promote to main
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎 Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CI_PAT }}
+          fetch-depth: "0"
+
+      - name: 🪪 Set git name+email
+        run: |
+          git config user.name "Merge Forward"
+          git config user.email "devops+ci@joshuins.com"
+
+      - name: 🚀 Merge release branch into main
+        run: |
+          release_branch="${{ inputs.release_branch }}"
+          echo "🚀 Promoting ${release_branch} -> main"
+          git checkout main
+          git merge "origin/${release_branch}" --no-ff -m "promote: ${release_branch} -> main"
+          git push
